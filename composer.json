@@ -20,7 +20,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Laravel\\Sail\\SailServiceProvider"
+                "Wentaophp\\Proxy\\ProxyServiceProvider"
             ]
         }
     }
