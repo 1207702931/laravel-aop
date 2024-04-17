@@ -70,7 +70,6 @@ class Pipeline
     public function then(Closure $destination)
     {
         $pipeline = array_reduce(array_reverse($this->pipes), $this->carry(), $this->prepareDestination($destination));
-
         return $pipeline($this->passable);
     }
 
@@ -79,11 +78,11 @@ class Pipeline
      */
     public function thenReturn()
     {
-        return $this->then(fn ($passable) => $passable);
+        return $this->then(fn($passable) => $passable);
     }
 
     /**
-     * Get the final piece of the Closure onion.
+     * 第一次的回调。
      */
     protected function prepareDestination(Closure $destination): Closure
     {
@@ -93,7 +92,10 @@ class Pipeline
     }
 
     /**
-     * Get a Closure that represents a slice of the application onion.
+     * 获取表示应用程序洋葱切片的 Closure。
+     * array_reduce($carry, $item) 中回调函数参数的顺序是：
+     * $carry 为上一次迭代的返回，第一次时 为 null
+     * $item 为当前迭代的值
      */
     protected function carry(): Closure
     {
@@ -102,7 +104,7 @@ class Pipeline
                 if (is_string($pipe) && class_exists($pipe)) {
                     $pipe = $this->container->get($pipe);
                 }
-                if (! $passable instanceof ProceedingJoinPoint) {
+                if (!$passable instanceof ProceedingJoinPoint) {
                     throw new \Exception('$passable must is a ProceedingJoinPoint object.');
                 }
                 $passable->pipe = $stack;

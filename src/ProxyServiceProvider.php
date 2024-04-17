@@ -1,4 +1,5 @@
 <?php
+
 namespace Wentaophp\Proxy;
 
 use App\Util\ResponseStruct;
@@ -41,6 +42,12 @@ class ProxyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->runningInConsole() &&
+            in_array(request()->server('argv')[1] ?? '', [
+                'octane:start', 'octane:reload'
+            ])) {
+            Cache::driver('file')->delete(self::CACHE_PROXY_SERVICE_PROVIDER);
+        }
         $classMap = $this->loadAnnotationAndAspect();
         app('ProxyServiceProviderClassLoader')->addClassMap($classMap);
     }
