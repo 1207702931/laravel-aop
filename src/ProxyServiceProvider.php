@@ -19,11 +19,13 @@ use Wentaophp\Proxy\Aop\Collector\AspectCollector;
 use Wentaophp\Proxy\Aop\Composer\ClassLoader;
 use Wentaophp\Proxy\Aop\ProxyCallVisitor;
 use Wentaophp\Proxy\Aop\ReflectionManager;
+use Wentaophp\Proxy\Command\ProxyClearCacheCommand;
 
 class ProxyServiceProvider extends ServiceProvider
 {
 
-    private const string CACHE_PROXY_SERVICE_PROVIDER = 'CACHE_PROXY_SERVICE_PROVIDER_';
+    private $loadCache = false;
+    public const string CACHE_PROXY_SERVICE_PROVIDER = 'CACHE_PROXY_SERVICE_PROVIDER_';
     private const string ANNOTATION_COLLECTOR = self::CACHE_PROXY_SERVICE_PROVIDER . 'AnnotationCollector';
     private const string ASPECT_COLLECTOR_CONTAINER = self::CACHE_PROXY_SERVICE_PROVIDER . 'AspectCollector::Container';
     private const string ASPECT_COLLECTOR_ASPECT_RULES = self::CACHE_PROXY_SERVICE_PROVIDER . 'AspectCollector::AspectRules';
@@ -34,6 +36,18 @@ class ProxyServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind('ProxyServiceProviderClassLoader', fn() => ClassLoader::findClassLoader());
+        $this->commands([
+            ProxyClearCacheCommand::class
+        ]);
+    }
+
+    /**
+     * @return $this
+     */
+    public function forceLoadCache(): static
+    {
+        $this->loadCache = true;
+        return $this;
     }
 
     /**
@@ -42,14 +56,22 @@ class ProxyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->runningInConsole() &&
-            in_array(request()->server('argv')[1] ?? '', [
+        if ($this->app->runningInConsole()) {
+            if (in_array(request()->server('argv')[1] ?? '', [
                 'octane:start', 'octane:reload'
             ])) {
-            Cache::driver('file')->delete(self::CACHE_PROXY_SERVICE_PROVIDER);
+                Cache::driver('file')->delete(self::CACHE_PROXY_SERVICE_PROVIDER);
+            }
+        } else {
+            if (!Cache::driver('file')->has(self::CACHE_PROXY_SERVICE_PROVIDER)) {
+                throw new \Exception("请执行 php artisan proxy:clear-cache 生成代理缓存");
+            }
         }
-        $classMap = $this->loadAnnotationAndAspect();
-        app('ProxyServiceProviderClassLoader')->addClassMap($classMap);
+        if ($this->loadCache || 'proxy:clear-cache' !== (request()->server('argv')[1] ?? '')) {
+            $classMap = $this->loadAnnotationAndAspect();
+            app('ProxyServiceProviderClassLoader')->addClassMap($classMap);
+        }
+
     }
 
     /**
